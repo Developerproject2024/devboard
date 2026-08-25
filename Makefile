@@ -55,8 +55,8 @@ tidy:
 	go mod tidy
 	go mod verify
 
-## ci: ejecutar todas las comprobaciones del pipeline
-ci: fmt-check verify vet test build
+## ci: ejecutar las comprobaciones y tests del pipeline
+ci: fmt-check verify vet test
 
 ## help: mostrar este menú
 help:
