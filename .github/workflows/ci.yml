@@ -69,3 +69,13 @@ jobs:
 
       - name: Build application
         run: make build
+
+  approval:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+
+    steps:
+      - name: Approved
+        run: echo "Build approved"
