@@ -94,22 +94,18 @@ jobs:
       - name: Validate SonarCloud configuration
         env:
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || secrets.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || secrets.SONAR_ORGANIZATION }}
         run: |
           test -n "$SONAR_PROJECT_KEY" || { echo "SONAR_PROJECT_KEY is not configured"; exit 1; }
-          test -n "$SONAR_ORGANIZATION" || { echo "SONAR_ORGANIZATION is not configured"; exit 1; }
 
       - name: SonarCloud analysis
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || secrets.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || secrets.SONAR_ORGANIZATION }}
         with:
           args: >-
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY || secrets.SONAR_PROJECT_KEY }}
-            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION || secrets.SONAR_ORGANIZATION }}
+            -Dsonar.organization=developerproject2024
             -Dsonar.sources=.
             -Dsonar.go.coverage.reportPaths=coverage.out
             -Dsonar.exclusions=**/bin/**,**/*_test.go
