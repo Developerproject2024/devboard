@@ -22,7 +22,7 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	response := HealthResponse{
 		Status:  "ok",
-		Version: "1.0.0",
+		Version: "1.1.0",
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
