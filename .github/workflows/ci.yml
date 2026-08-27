@@ -70,24 +70,13 @@ jobs:
       - name: Build application
         run: make build
 
-  approval:
+  deploy:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment:
-      name: production
-
-    steps:
-      - name: Approved
-        run: echo "Build approved"
-
-  deploy:
-    needs: approval
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment:
-      name: production
 
     steps:
       - name: Deploy to production
-        run: echo "Deploy command goes here"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl --fail-with-body -X POST "$RENDER_DEPLOY_HOOK"
