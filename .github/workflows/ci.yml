@@ -72,8 +72,40 @@ jobs:
         with:
           go-version-file: go.mod
 
+  sonar:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Generate coverage
+        run: go test -coverprofile=coverage.out ./...
+
+      - name: SonarCloud analysis
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >-
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+            -Dsonar.sources=.
+            -Dsonar.go.coverage.reportPaths=coverage.out
+            -Dsonar.exclusions=**/bin/**,**/*_test.go
+
   build:
-    needs: [lint, security]
+    needs: [lint, security, sonar]
     runs-on: ubuntu-latest
 
     steps:
@@ -90,7 +122,7 @@ jobs:
         run: make build
 
   docker:
-    needs: [lint, security]
+    needs: [lint, security, sonar]
     runs-on: ubuntu-latest
 
     steps:
@@ -101,7 +133,7 @@ jobs:
         run: docker build --tag devboard:test .
 
   deploy:
-    needs: [build, docker]
+    needs: [build, docker, sonar]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
