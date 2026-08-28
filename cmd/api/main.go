@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-	"log/slog"
 	"net/http"
 	"os"
 
@@ -18,9 +16,9 @@ func main() {
 		port = "8080"
 	}
 
-	logger := logger.New(logger.DefaultConfig())
+	logger := logger.New(logger.ProductionConfig())
 
-	server := server.New(":" + port)
+	server := server.New(":"+port, logger)
 
 	server.Use(middlewares.Recovery(logger))
 	server.Use(middlewares.Logger(logger))
@@ -35,10 +33,9 @@ func main() {
 		panic("error provocado para probar Recovery")
 	}))
 
-	logger.Info("servidor iniciando", slog.String("addr", ":8080"))
-
 	if err := server.Start(); err != nil {
-		log.Fatalf("Error al iniciar el servidor: %v", err)
+		logger.Error("Error starting server fatal", "error", err)
+		os.Exit(1)
 	}
 
 }
