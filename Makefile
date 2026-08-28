@@ -3,8 +3,10 @@ APP_NAME=devboard
 MAIN_PATH=./cmd/api
 MIGRATE_PATH=./migrations
 DB_URL=postgresql://postgres:password@localhost:5432/devboard?sslmode=disable
+COVERAGE_PROFILE=coverage.out
+COVERAGE_MIN=90.0
 
-.PHONY: run build fmt fmt-check verify vet test lint ci migrate-up migrate-down generate tidy help docker-up docker-down docker-logs
+.PHONY: run build fmt fmt-check verify vet test lint ci install-hooks migrate-up migrate-down generate tidy help docker-up docker-down docker-logs
 
 ## run: correr la aplicación
 run:
@@ -32,11 +34,20 @@ vet:
 
 ## test: correr todos los tests con race detector
 test:
-	go test -race -cover ./...
+	CGO_ENABLED=1 go test -race -coverprofile=$(COVERAGE_PROFILE) ./internal/...
+	@coverage=$$(go tool cover -func=$(COVERAGE_PROFILE) | awk '/^total:/ { sub(/%/, "", $$NF); print $$NF }'); \
+	test -n "$$coverage" || { echo "Coverage could not be measured"; exit 1; }; \
+	awk -v coverage="$$coverage" -v minimum="$(COVERAGE_MIN)" 'BEGIN { if (coverage < minimum) exit 1 }' || { echo "Coverage $${coverage}% is below minimum $(COVERAGE_MIN)%"; exit 1; }; \
+	echo "Coverage: $${coverage}% (minimum $(COVERAGE_MIN)%)"
 
 ## lint: analizar el código con golangci-lint
 lint:
 	golangci-lint run ./...
+
+## install-hooks: activar los hooks de Git del repositorio
+install-hooks:
+	git config core.hooksPath .githooks
+	@echo "Git hooks enabled from .githooks"
 
 ## migrate-up: aplicar todas las migraciones pendientes
 migrate-up:
