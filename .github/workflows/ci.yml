@@ -149,6 +149,7 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.go.coverage.reportPaths=coverage.out
             -Dsonar.exclusions=**/bin/**,**/*_test.go,cmd/api/main.go
+            -Dsonar.qualitygate.wait=true
 
   build:
     needs: [test, lint, security]
