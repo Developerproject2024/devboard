@@ -21,7 +21,7 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	response := HealthResponse{
-		Status:  "ok",
+		Status:  "Fabio Arango",
 		Version: "1.1.0",
 	}
 

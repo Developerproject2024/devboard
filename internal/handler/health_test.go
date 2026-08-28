@@ -26,7 +26,7 @@ func TestHealthHandlerServeHTTP(t *testing.T) {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if response != (HealthResponse{Status: "ok", Version: "1.1.0"}) {
+	if response != (HealthResponse{Status: "Fabio Arango", Version: "1.1.0"}) {
 		t.Fatalf("response = %+v, want %+v", response, HealthResponse{Status: "ok", Version: "1.1.0"})
 	}
 }
