@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+
+set -eu
+
+commit_message_file=$1
+commit_subject=$(sed -n '1p' "$commit_message_file")
+commit_type=${commit_subject%%:*}
+commit_description=${commit_subject#*:}
+
+case "$commit_type" in
+	feat|fix|ci|test)
+		;;
+	*)
+		echo "❌ Invalid commit type: '$commit_type'"
+		echo "Allowed types: feat, fix, ci, test"
+		exit 1
+		;;
+esac
+
+if [ "$commit_description" = "$commit_subject" ] || [ -z "$(printf '%s' "$commit_description" | tr -d '[:space:]')" ]; then
+	echo "❌ Commit description cannot be empty."
+	echo "Use: <type>: <description>"
+	exit 1
+fi
+
+echo "✅ Commit message accepted: $commit_subject"
