@@ -36,6 +36,7 @@ jobs:
           version=1.7.7
           archive="actionlint_${version}_linux_amd64.tar.gz"
           curl --fail --silent --show-error --location \
+            --proto '=https' --proto-redir '=https' \
             --output "$RUNNER_TEMP/$archive" \
             "https://github.com/rhysd/actionlint/releases/download/v${version}/${archive}"
           printf '%s  %s\n' \
