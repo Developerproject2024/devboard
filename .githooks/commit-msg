@@ -12,14 +12,26 @@ case "$commit_type" in
 		;;
 	*)
 		echo "❌ Invalid commit type: '$commit_type'"
-		echo "Allowed types: feat, fix, ci, test"
+		printf '%s\n' \
+			"Allowed types:" \
+			"  Type   Description                 Example" \
+			"  feat   New functionality           feat: add user health check" \
+			"  fix    Bug correction              fix: handle empty response" \
+			"  ci     CI/CD changes               ci: validate workflow" \
+			"  test   Tests or coverage           test: add handler tests"
 		exit 1
 		;;
 esac
 
 if [ "$commit_description" = "$commit_subject" ] || [ -z "$(printf '%s' "$commit_description" | tr -d '[:space:]')" ]; then
 	echo "❌ Commit description cannot be empty."
-	echo "Use: <type>: <description>"
+	printf '%s\n' \
+		"Allowed types:" \
+		"  Type   Description                 Example" \
+		"  feat   New functionality           feat: add user health check" \
+		"  fix    Bug correction              fix: handle empty response" \
+		"  ci     CI/CD changes               ci: validate workflow" \
+		"  test   Tests or coverage           test: add handler tests"
 	exit 1
 fi
 

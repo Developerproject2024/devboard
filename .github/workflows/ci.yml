@@ -211,5 +211,10 @@ jobs:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
           test -n "$RENDER_DEPLOY_HOOK" || { echo "RENDER_DEPLOY_HOOK is not configured"; exit 1; }
+          case "$RENDER_DEPLOY_HOOK" in
+            https://*) ;;
+            *) echo "RENDER_DEPLOY_HOOK must use HTTPS"; exit 1 ;;
+          esac
           curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
+            --location --proto '=https' --proto-redir '=https' \
             --request POST --url "$RENDER_DEPLOY_HOOK"
