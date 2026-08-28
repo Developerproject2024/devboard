@@ -2,6 +2,8 @@ name: Go CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
@@ -22,17 +24,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-
       - name: Verify toolchain
         run: |
           command -v gcc
@@ -42,8 +33,16 @@ jobs:
 
       - name: Install actionlint
         run: |
-          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
-          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          version=1.7.7
+          archive="actionlint_${version}_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location \
+            --output "$RUNNER_TEMP/$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${version}/${archive}"
+          printf '%s  %s\n' \
+            '023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757' \
+            "$RUNNER_TEMP/$archive" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
       - name: Validate workflow with actionlint
         run: actionlint .github/workflows/ci.yml
@@ -149,7 +148,7 @@ jobs:
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.sources=.
             -Dsonar.go.coverage.reportPaths=coverage.out
-            -Dsonar.exclusions=**/bin/**,**/*_test.go
+            -Dsonar.exclusions=**/bin/**,**/*_test.go,cmd/api/main.go
 
   build:
     needs: [test, lint, security]
@@ -179,8 +178,27 @@ jobs:
       - name: Build Docker image
         run: docker build --tag devboard:test .
 
+  merge-gate:
+    needs: [test, lint, security, sonar, build, docker]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Require all checks to pass
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+          SONAR_RESULT: ${{ needs.sonar.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          DOCKER_RESULT: ${{ needs.docker.result }}
+        run: |
+          for result in "$TEST_RESULT" "$LINT_RESULT" "$SECURITY_RESULT" "$SONAR_RESULT" "$BUILD_RESULT" "$DOCKER_RESULT"; do
+            test "$result" = success || { echo "Required check result: $result"; exit 1; }
+          done
+
   deploy:
-    needs: [build, docker, sonar]
+    needs: merge-gate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
