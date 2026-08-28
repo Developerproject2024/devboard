@@ -2,8 +2,6 @@ name: Go CI
 
 on:
   push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -17,8 +15,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  tooling:
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Verify toolchain
+        run: |
+          command -v gcc
+          gcc --version
+          command -v ruby
+          ruby --version
+
+      - name: Install actionlint
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+
+      - name: Validate workflow with actionlint
+        run: actionlint .github/workflows/ci.yml
+
+      - name: Validate workflow YAML with Ruby
+        run: ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci.yml"); puts "YAML OK"'
+
+  test:
+    needs: tooling
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 1
 
     steps:
       - name: Checkout
@@ -34,7 +71,7 @@ jobs:
         run: make ci
 
   lint:
-    needs: test
+    needs: tooling
     runs-on: ubuntu-latest
 
     steps:
@@ -54,7 +91,7 @@ jobs:
           install-mode: goinstall
 
   security:
-    needs: test
+    needs: tooling
     runs-on: ubuntu-latest
 
     steps:
@@ -89,15 +126,17 @@ jobs:
           cache: true
 
       - name: Generate coverage
-        run: go test -coverprofile=coverage.out ./...
+        run: CGO_ENABLED=1 go test -race -coverprofile=coverage.out ./internal/...
 
       - name: Validate SonarCloud configuration
         env:
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           test -n "$SONAR_PROJECT_KEY" || { echo "SONAR_PROJECT_KEY is not configured"; exit 1; }
           test -n "$SONAR_ORGANIZATION" || { echo "SONAR_ORGANIZATION is not configured"; exit 1; }
+          test -n "$SONAR_TOKEN" || { echo "SONAR_TOKEN is not configured"; exit 1; }
 
       - name: SonarCloud analysis
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
@@ -113,7 +152,7 @@ jobs:
             -Dsonar.exclusions=**/bin/**,**/*_test.go
 
   build:
-    needs: [lint, security, sonar]
+    needs: [test, lint, security]
     runs-on: ubuntu-latest
 
     steps:
@@ -130,7 +169,7 @@ jobs:
         run: make build
 
   docker:
-    needs: [lint, security, sonar]
+    needs: [test, lint, security]
     runs-on: ubuntu-latest
 
     steps:
@@ -151,4 +190,7 @@ jobs:
       - name: Deploy to production
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: curl --fail-with-body -X POST "$RENDER_DEPLOY_HOOK"
+        run: |
+          test -n "$RENDER_DEPLOY_HOOK" || { echo "RENDER_DEPLOY_HOOK is not configured"; exit 1; }
+          curl --silent --show-error --fail-with-body --retry 3 --retry-all-errors \
+            --request POST --url "$RENDER_DEPLOY_HOOK"
