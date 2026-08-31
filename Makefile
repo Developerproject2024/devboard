@@ -32,13 +32,16 @@ verify:
 vet:
 	go vet ./...
 
-## test: correr todos los tests con race detector
+## test: correr todos los tests con race detector y barra de progreso
 test:
-	CGO_ENABLED=1 go test -race -coverprofile=$(COVERAGE_PROFILE) ./internal/...
-	@coverage=$$(go tool cover -func=$(COVERAGE_PROFILE) | awk '/^total:/ { sub(/%/, "", $$NF); print $$NF }'); \
-	test -n "$$coverage" || { echo "Coverage could not be measured"; exit 1; }; \
-	awk -v coverage="$$coverage" -v minimum="$(COVERAGE_MIN)" 'BEGIN { if (coverage < minimum) exit 1 }' || { echo "Coverage $${coverage}% is below minimum $(COVERAGE_MIN)%"; exit 1; }; \
-	echo "Coverage: $${coverage}% (minimum $(COVERAGE_MIN)%)"
+	@echo "🧪 Ejecutando tests..."
+	@echo ""
+	@./scripts/run_tests.sh
+	@echo ""
+	@coverage=$$(go tool cover -func=coverage.out | awk '/^total:/ { sub(/%/, "", $$NF); print $$NF }'); \
+	test -n "$$coverage" || { echo "❌ Coverage could not be measured"; exit 1; }; \
+	awk -v coverage="$$coverage" -v minimum="$(COVERAGE_MIN)" 'BEGIN { if (coverage < minimum) exit 1 }' || { echo "❌ Coverage $${coverage}% is below minimum $(COVERAGE_MIN)%"; exit 1; }; \
+	echo "✅ Coverage: $${coverage}% (minimum $(COVERAGE_MIN)%)"
 
 ## lint: analizar el código con golangci-lint
 lint:
