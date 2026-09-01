@@ -67,6 +67,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Download Go dependencies
+        run: go mod download -x
+
+      - name: Verify module dependencies
+        run: go mod verify
+
       - name: Run CI checks
         run: make ci
 
@@ -125,6 +131,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Download Go dependencies
+        run: go mod download -x
+
+      - name: Verify module dependencies
+        run: go mod verify
+
       - name: Generate coverage
         run: CGO_ENABLED=1 go test -race -coverprofile=coverage.out ./internal/...
 
@@ -165,6 +177,12 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Download Go dependencies
+        run: go mod download -x
+
+      - name: Verify module dependencies
+        run: go mod verify
 
       - name: Install swaggo
         run: go install github.com/swaggo/swag/cmd/swag@latest
