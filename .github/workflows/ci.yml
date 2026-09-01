@@ -184,9 +184,6 @@ jobs:
       - name: Verify module dependencies
         run: go mod verify
 
-      - name: Install swaggo
-        run: go install github.com/swaggo/swag/cmd/swag@latest
-
       - name: Generate OpenAPI documentation
         run: make docs
 
