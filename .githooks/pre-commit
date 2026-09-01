@@ -11,4 +11,10 @@ make lint
 echo "🧪 Running tests..."
 make test
 
+echo "📚 Generating documentation..."
+make docs
+
+echo "📝 Staging generated docs..."
+git add docs/ 2>/dev/null || true
+
 echo "✅ Pre-commit checks passed."
