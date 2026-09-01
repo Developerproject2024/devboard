@@ -152,6 +152,33 @@ jobs:
             -Dsonar.exclusions=**/bin/**,**/*_test.go,cmd/api/main.go
             -Dsonar.qualitygate.wait=true
 
+  docs:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install swaggo
+        run: go install github.com/swaggo/swag/cmd/swag@latest
+
+      - name: Generate OpenAPI documentation
+        run: make docs
+
+      - name: Verify documentation generated
+        run: |
+          test -f docs/docs.go || { echo "docs/docs.go not found"; exit 1; }
+          test -f docs/swagger.json || { echo "docs/swagger.json not found"; exit 1; }
+          test -f docs/swagger.yaml || { echo "docs/swagger.yaml not found"; exit 1; }
+          echo "✅ Documentation generated successfully"
+
   build:
     needs: [test, lint, security]
     runs-on: ubuntu-latest
@@ -181,7 +208,7 @@ jobs:
         run: docker build --tag devboard:test .
 
   merge-gate:
-    needs: [test, lint, security, sonar, build, docker]
+    needs: [test, lint, security, sonar, build, docker, docs]
     if: always()
     runs-on: ubuntu-latest
 
@@ -194,8 +221,9 @@ jobs:
           SONAR_RESULT: ${{ needs.sonar.result }}
           BUILD_RESULT: ${{ needs.build.result }}
           DOCKER_RESULT: ${{ needs.docker.result }}
+          DOCS_RESULT: ${{ needs.docs.result }}
         run: |
-          for result in "$TEST_RESULT" "$LINT_RESULT" "$SECURITY_RESULT" "$SONAR_RESULT" "$BUILD_RESULT" "$DOCKER_RESULT"; do
+          for result in "$TEST_RESULT" "$LINT_RESULT" "$SECURITY_RESULT" "$SONAR_RESULT" "$BUILD_RESULT" "$DOCKER_RESULT" "$DOCS_RESULT"; do
             test "$result" = success || { echo "Required check result: $result"; exit 1; }
           done
 
