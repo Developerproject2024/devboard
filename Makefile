@@ -90,4 +90,4 @@ docker-logs:
 
 ## docs: generar documentación OpenAPI con swaggo
 docs: 
-	go run github.com/swaggo/swag/cmd/swag@v1.8.1 init -g cmd/api/main.go -o docs
+	go run github.com/swaggo/swag/cmd/swag init -g cmd/api/main.go -o docs
