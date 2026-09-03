@@ -12,7 +12,8 @@ import (
 )
 
 func TestNewConfiguresHTTPServer(t *testing.T) {
-	server := New(":8080", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	server := New(":8080", WithLogger(logger))
 
 	if server.httpServer.Addr != ":8080" {
 		t.Fatalf("address = %q, want %q", server.httpServer.Addr, ":8080")
@@ -23,7 +24,8 @@ func TestNewConfiguresHTTPServer(t *testing.T) {
 }
 
 func TestRegisterRoutesAndUse(t *testing.T) {
-	server := New(":8080", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	server := New(":8080", WithLogger(logger))
 	server.RegisterRoutes("GET /health", http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.WriteHeader(http.StatusAccepted)
 	}))
@@ -55,7 +57,8 @@ func TestRegisterRoutesAndUse(t *testing.T) {
 }
 
 func TestStartReturnsListenError(t *testing.T) {
-	server := New("invalid-address", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	server := New("invalid-address", WithLogger(logger))
 
 	if err := server.Start(); err == nil {
 		t.Fatal("Start returned nil error, want listen error")
@@ -63,7 +66,8 @@ func TestStartReturnsListenError(t *testing.T) {
 }
 
 func TestStartShutsDownOnSignal(t *testing.T) {
-	server := New("127.0.0.1:0", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	server := New("127.0.0.1:0", WithLogger(logger))
 	result := make(chan error, 1)
 	go func() {
 		result <- server.Start()

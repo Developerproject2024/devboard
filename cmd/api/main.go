@@ -1,8 +1,9 @@
 package main
 
 import (
-	"net/http"
+	"log/slog"
 	"os"
+	"time"
 
 	_ "github.com/Developerproject2024/devboard/docs"
 	"github.com/Developerproject2024/devboard/internal/handler"
@@ -20,31 +21,48 @@ import (
 // @BasePath /api/v1
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+
+	// 1. Configuración del entorno
+	env := os.Getenv("GO_ENV")
+	slog.Info("entorno cargado", "GO_ENV", env)
+
+	// 2. Logger
+	var log *slog.Logger
+	if env == "production" {
+		log = logger.New(logger.ProductionConfig())
+	} else {
+		log = logger.New(logger.DefaultConfig())
 	}
 
-	logger := logger.New(logger.ProductionConfig())
+	// 3. Dependencies compartidas
+	// validate := validator.New()
+	// notifier := notification.NewLogNotifier(log)
+	// _ = notifier
 
-	server := server.New(":"+port, logger)
+	// 4. Servidor con Functional options
+	srv := server.New(":8080",
+		server.WithLogger(log),
+		server.WithReadTimeout(15*time.Second),
+		server.WithWriteTimeout(30*time.Second),
+	)
 
-	server.Use(middlewares.Recovery(logger))
-	server.Use(middlewares.Logger(logger))
-
+	// 5. Handlers
 	healthHandler := handler.NewHealthHandler()
 
-	server.RegisterRoutes("GET /docs/", httpSwagger.WrapHandler)
-	server.RegisterRoutes("GET /health", healthHandler)
-	server.RegisterRoutes("GET /ready", healthHandler)
+	// 6. Registro de rutas
+	srv.RegisterRoutes("GET /docs/", httpSwagger.WrapHandler)
+	srv.RegisterRoutes("GET /health", healthHandler)
 
-	// Ruta temporal para probar Recovery
-	server.RegisterRoutes("GET /panic", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		panic("error provocado para probar Recovery")
-	}))
+	// 7. Middleware chain
+	srv.UseChain(
+		middlewares.Recovery(log),
+		middlewares.Logger(log),
+	)
 
-	if err := server.Start(); err != nil {
-		logger.Error("Error starting server fatal", "error", err)
+	// 8. Arrancar shutdown limpio
+
+	if err := srv.Start(); err != nil {
+		log.Error("error fatal", "error", err)
 		os.Exit(1)
 	}
 
