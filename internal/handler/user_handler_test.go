@@ -77,6 +77,20 @@ func TestUserHandlerCreateInvalidRequest(t *testing.T) {
 	}
 }
 
+func TestUserHandlerCreateAlreadyExists(t *testing.T) {
+	handler := newUserHandlerForTest()
+	body := `{"email":"ana@example.com","name":"Ana","password":"password"}`
+	firstRecorder := httptest.NewRecorder()
+	handler.Create(firstRecorder, userRequest(http.MethodPost, "/users", body))
+
+	secondRecorder := httptest.NewRecorder()
+	handler.Create(secondRecorder, userRequest(http.MethodPost, "/users", body))
+
+	if secondRecorder.Code != http.StatusConflict {
+		t.Fatalf("Create() status = %d; se esperaba %d", secondRecorder.Code, http.StatusConflict)
+	}
+}
+
 func TestUserHandlerCreateMalformedJSON(t *testing.T) {
 	handler := newUserHandlerForTest()
 	recorder := httptest.NewRecorder()

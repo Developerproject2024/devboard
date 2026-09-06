@@ -141,6 +141,27 @@ func TestTaskUseCase_AssignTask_UpdateError(t *testing.T) {
 	}
 }
 
+func TestTaskUseCase_AssignTask_GetError(t *testing.T) {
+	getErr := errors.New("fallo de consulta")
+	useCase := newTaskUseCaseStub(&taskRepositoryStub{getErr: getErr})
+
+	_, err := useCase.AssignTask(context.Background(), "task-1", "user-2")
+	if !errors.Is(err, getErr) {
+		t.Fatalf("AssignTask() devolvió %v; se esperaba %v", err, getErr)
+	}
+}
+
+func TestTaskUseCase_AssignTaskDone(t *testing.T) {
+	task := domain.NewTask("project-1", "Tarea", "", "user-1")
+	task.Status = domain.TaskStatusDone
+	useCase := newTaskUseCaseStub(&taskRepositoryStub{task: task})
+
+	_, err := useCase.AssignTask(context.Background(), "task-1", "user-2")
+	if !errors.Is(err, domain.ErrTaskNotAssignable) {
+		t.Fatalf("AssignTask() devolvió %v; se esperaba ErrTaskNotAssignable", err)
+	}
+}
+
 func TestTaskUseCase_UpdateTaskStatus(t *testing.T) {
 	task := domain.NewTask("project-1", "Tarea", "", "user-1")
 	repository := &taskRepositoryStub{task: task}
@@ -169,5 +190,26 @@ func TestTaskUseCase_UpdateTaskStatus_InvalidStatus(t *testing.T) {
 	}
 	if repository.updatedTask != nil {
 		t.Fatal("UpdateTaskStatus() no debía actualizar una tarea con estado inválido")
+	}
+}
+
+func TestTaskUseCase_UpdateTaskStatus_GetError(t *testing.T) {
+	getErr := errors.New("fallo de consulta")
+	useCase := newTaskUseCaseStub(&taskRepositoryStub{getErr: getErr})
+
+	_, err := useCase.UpdateTaskStatus(context.Background(), "task-1", domain.TaskStatusInProgress)
+	if !errors.Is(err, getErr) {
+		t.Fatalf("UpdateTaskStatus() devolvió %v; se esperaba %v", err, getErr)
+	}
+}
+
+func TestTaskUseCase_UpdateTaskStatus_UpdateError(t *testing.T) {
+	task := domain.NewTask("project-1", "Tarea", "", "user-1")
+	updateErr := errors.New("fallo de actualización")
+	useCase := newTaskUseCaseStub(&taskRepositoryStub{task: task, updateErr: updateErr})
+
+	_, err := useCase.UpdateTaskStatus(context.Background(), "task-1", domain.TaskStatusInProgress)
+	if !errors.Is(err, updateErr) {
+		t.Fatalf("UpdateTaskStatus() devolvió %v; se esperaba %v", err, updateErr)
 	}
 }

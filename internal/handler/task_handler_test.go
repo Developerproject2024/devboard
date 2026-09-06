@@ -2,7 +2,9 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -15,8 +17,37 @@ import (
 	"github.com/Developerproject2024/devboard/internal/validator"
 )
 
+type failingTaskRepository struct {
+	err error
+}
+
+func (r failingTaskRepository) Create(context.Context, *domain.Task) error {
+	return r.err
+}
+
+func (r failingTaskRepository) Update(context.Context, *domain.Task) error {
+	return r.err
+}
+
+func (r failingTaskRepository) GetByID(context.Context, string) (*domain.Task, error) {
+	return nil, r.err
+}
+
+func (r failingTaskRepository) ListByProject(context.Context, string) ([]*domain.Task, error) {
+	return nil, r.err
+}
+
 func newTaskHandlerForTest() *TaskHandler {
 	repository := memory.NewTaskRepository()
+	return NewTaskHandler(
+		usecase.NewTaskUseCase(repository, repository),
+		validator.New(),
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+}
+
+func newFailingTaskHandlerForTest(err error) *TaskHandler {
+	repository := failingTaskRepository{err: err}
 	return NewTaskHandler(
 		usecase.NewTaskUseCase(repository, repository),
 		validator.New(),
@@ -66,6 +97,28 @@ func TestTaskHandlerCreateInvalidRequest(t *testing.T) {
 	}
 }
 
+func TestTaskHandlerCreateValidationError(t *testing.T) {
+	handler := newTaskHandlerForTest()
+	recorder := httptest.NewRecorder()
+
+	handler.Create(recorder, taskRequest(http.MethodPost, "/tasks", `{}`))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("Create() status = %d; se esperaba %d", recorder.Code, http.StatusBadRequest)
+	}
+}
+
+func TestTaskHandlerCreateRepositoryError(t *testing.T) {
+	handler := newFailingTaskHandlerForTest(errors.New("fallo de persistencia"))
+	recorder := httptest.NewRecorder()
+
+	handler.Create(recorder, taskRequest(http.MethodPost, "/tasks", `{"project_id":"project-1","title":"Tarea"}`))
+
+	if recorder.Code != http.StatusInternalServerError {
+		t.Fatalf("Create() status = %d; se esperaba %d", recorder.Code, http.StatusInternalServerError)
+	}
+}
+
 func TestTaskHandlerGet(t *testing.T) {
 	handler := newTaskHandlerForTest()
 	createRecorder := httptest.NewRecorder()
@@ -111,6 +164,19 @@ func TestTaskHandlerListByProject(t *testing.T) {
 	}
 }
 
+func TestTaskHandlerListByProjectRepositoryError(t *testing.T) {
+	handler := newFailingTaskHandlerForTest(errors.New("fallo de consulta"))
+	recorder := httptest.NewRecorder()
+	request := taskRequest(http.MethodGet, "/projects/project-1/tasks", "")
+	request.SetPathValue("id", "project-1")
+
+	handler.ListByProject(recorder, request)
+
+	if recorder.Code != http.StatusInternalServerError {
+		t.Fatalf("ListByProject() status = %d; se esperaba %d", recorder.Code, http.StatusInternalServerError)
+	}
+}
+
 func TestTaskHandlerAssign(t *testing.T) {
 	handler := newTaskHandlerForTest()
 	handler.Create(httptest.NewRecorder(), taskRequest(http.MethodPost, "/tasks", `{"project_id":"project-1","title":"Tarea"}`))
@@ -131,6 +197,28 @@ func TestTaskHandlerAssignInvalidRequest(t *testing.T) {
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("Assign() status = %d; se esperaba %d", recorder.Code, http.StatusBadRequest)
+	}
+}
+
+func TestTaskHandlerAssignMalformedJSON(t *testing.T) {
+	handler := newTaskHandlerForTest()
+	recorder := httptest.NewRecorder()
+
+	handler.Assign(recorder, taskRequest(http.MethodPut, "/tasks/task_1/assign", `{`))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("Assign() status = %d; se esperaba %d", recorder.Code, http.StatusBadRequest)
+	}
+}
+
+func TestTaskHandlerAssignNotFound(t *testing.T) {
+	handler := newTaskHandlerForTest()
+	recorder := httptest.NewRecorder()
+
+	handler.Assign(recorder, taskRequest(http.MethodPut, "/tasks/task_1/assign", `{"assignee_id":"550e8400-e29b-41d4-a716-446655440000"}`))
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("Assign() status = %d; se esperaba %d", recorder.Code, http.StatusNotFound)
 	}
 }
 
@@ -161,5 +249,27 @@ func TestTaskHandlerUpdateStatusInvalidRequest(t *testing.T) {
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("UpdateStatus() status = %d; se esperaba %d", recorder.Code, http.StatusBadRequest)
+	}
+}
+
+func TestTaskHandlerUpdateStatusMalformedJSON(t *testing.T) {
+	handler := newTaskHandlerForTest()
+	recorder := httptest.NewRecorder()
+
+	handler.UpdateStatus(recorder, taskRequest(http.MethodPut, "/tasks/task_1/status", `{`))
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("UpdateStatus() status = %d; se esperaba %d", recorder.Code, http.StatusBadRequest)
+	}
+}
+
+func TestTaskHandlerUpdateStatusNotFound(t *testing.T) {
+	handler := newTaskHandlerForTest()
+	recorder := httptest.NewRecorder()
+
+	handler.UpdateStatus(recorder, taskRequest(http.MethodPut, "/tasks/task_1/status", `{"status":"in_progress"}`))
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("UpdateStatus() status = %d; se esperaba %d", recorder.Code, http.StatusNotFound)
 	}
 }
