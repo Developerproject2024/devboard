@@ -1,10 +1,120 @@
 basePath: /api/v1
 definitions:
+  handler.ProblemDetails:
+    properties:
+      detail:
+        type: string
+      errors:
+        items:
+          $ref: '#/definitions/validator.ValidationError'
+        type: array
+      instance:
+        type: string
+      status:
+        type: integer
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  handler.assignTaskRequest:
+    properties:
+      assignee_id:
+        type: string
+    required:
+    - assignee_id
+    type: object
+  handler.createTaskRequest:
+    properties:
+      description:
+        maxLength: 2000
+        type: string
+      project_id:
+        type: string
+      title:
+        maxLength: 200
+        minLength: 3
+        type: string
+    required:
+    - project_id
+    - title
+    type: object
+  handler.createUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
   handler.healthResponse:
     properties:
       status:
         type: string
       version:
+        type: string
+    type: object
+  handler.paginatedTaskResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/handler.taskResponse'
+        type: array
+      has_more:
+        type: boolean
+      next_cursor:
+        type: string
+    type: object
+  handler.taskResponse:
+    properties:
+      assignee_id:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      project_id:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handler.updateStatusRequest:
+    properties:
+      status:
+        type: string
+    required:
+    - status
+    type: object
+  handler.userResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  validator.ValidationError:
+    properties:
+      field:
+        type: string
+      message:
         type: string
     type: object
 host: localhost:8080
@@ -28,4 +138,187 @@ paths:
       summary: Health check
       tags:
       - system
+  /projects/{id}/tasks:
+    get:
+      description: Retorna todas las tareas de un proyecto
+      parameters:
+      - description: ID del proyecto
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.paginatedTaskResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Listar tareas del proyecto
+      tags:
+      - tasks
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Registra una nueva tarea en el sistema
+      parameters:
+      - description: Datos de la tarea
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.createTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handler.taskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Crear tarea
+      tags:
+      - tasks
+  /tasks/{id}:
+    get:
+      description: Obtiene una tarea por su ID
+      parameters:
+      - description: ID de la tarea
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.taskResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Obtener tarea por ID
+      tags:
+      - tasks
+  /tasks/{id}/assign:
+    put:
+      consumes:
+      - application/json
+      description: Asigna una tarea a un miembro del equipo
+      parameters:
+      - description: ID de la tarea
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID del asignado
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.assignTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.taskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Asignar tarea
+      tags:
+      - tasks
+  /tasks/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Mueve una tarea a un nuevo estado del tablero
+      parameters:
+      - description: ID de la tarea
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Nuevo estado
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.updateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.taskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Actualizar estado de tarea
+      tags:
+      - tasks
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Registra un nuevo usuario en el sistema
+      parameters:
+      - description: Datos del usuario
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.createUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handler.userResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Crear usuario
+      tags:
+      - users
+  /users/{id}:
+    get:
+      description: Obtiene un usuario por su ID
+      parameters:
+      - description: ID del usuario
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.userResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Obtener usuario
+      tags:
+      - users
 swagger: "2.0"

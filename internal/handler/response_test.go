@@ -16,10 +16,10 @@ func TestResponseJSON(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	data := map[string]string{"message": "success"}
 
-	err := ResponseJSON(recorder, http.StatusOK, data)
+	err := RespondJSON(recorder, http.StatusOK, data)
 
 	if err != nil {
-		t.Fatalf("ResponseJSON() error = %v, want nil", err)
+		t.Fatalf("RespondJSON() error = %v, want nil", err)
 	}
 
 	if contentType := recorder.Header().Get("Content-Type"); contentType != "application/json" {
@@ -40,12 +40,12 @@ func TestResponseJSON(t *testing.T) {
 	}
 }
 
-func TestResponseJSONWithNotFound(t *testing.T) {
+func TestRespondJSONWithNotFound(t *testing.T) {
 	recorder := httptest.NewRecorder()
-	err := ResponseJSON(recorder, http.StatusNotFound, map[string]string{"error": "not found"})
+	err := RespondJSON(recorder, http.StatusNotFound, map[string]string{"error": "not found"})
 
 	if err != nil {
-		t.Fatalf("ResponseJSON() error = %v, want nil", err)
+		t.Fatalf("RespondJSON() error = %v, want nil", err)
 	}
 
 	if recorder.Code != http.StatusNotFound {

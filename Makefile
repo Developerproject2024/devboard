@@ -6,7 +6,7 @@ DB_URL=postgresql://postgres:password@localhost:5432/devboard?sslmode=disable
 COVERAGE_PROFILE=coverage.out
 COVERAGE_MIN=90.0
 
-.PHONY: run build fmt fmt-check verify vet test lint ci install-hooks migrate-up migrate-down generate tidy help docker-up docker-down docker-logs
+.PHONY: run build fmt fmt-check verify vet test lint ci install-hooks migrate-up migrate-down generate tidy help docker-up docker-down docker-logs docs
 
 ## run: correr la aplicación
 run:
