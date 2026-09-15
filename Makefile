@@ -10,7 +10,7 @@ COVERAGE_MIN=90.0
 
 ## run: correr la aplicación
 run:
-	GO_ENV=development go run $(MAIN_PATH)/main.go
+	GO_ENV=development DATABASE_URL=$(DB_URL)  go run $(MAIN_PATH)/main.go
 
 ## build: compilar el binario
 build:
@@ -62,6 +62,7 @@ migrate-down:
 
 ## generate: correr go generate en todo el proyecto
 generate:
+	sqlc generate
 	go generate ./...
 
 ## tidy: limpiar y verificar dependencias
@@ -91,3 +92,7 @@ docker-logs:
 ## docs: generar documentación OpenAPI con swaggo
 docs: 
 	go run github.com/swaggo/swag/cmd/swag init -g cmd/api/main.go -o docs
+
+## migrate-create: crea una nueva migración (OJO para usarlo su uso es: make migrate-create name=create_users)
+migrate-create:
+	migrate create -ext sql -dir $(MIGRATE_PATH) -seq $(name)

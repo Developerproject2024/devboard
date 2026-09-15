@@ -49,7 +49,12 @@ echo -e "${YELLOW}⏳ Ejecutando tests...${NC}\n"
 # Ejecutar tests y capturar salida
 temp_file=$(mktemp)
 
-(CGO_ENABLED=1 go test -v -race -coverprofile=coverage.out ./internal/... 2>&1) | tee "$temp_file" &
+# Excluir la capa de PostgreSQL sqlc/generated del perfil de cobertura
+# porque la infraestructura de acceso a BD no está disponible
+# dentro del árbol de pruebas unitarias del repositorio.
+packages=$(go list ./internal/... | grep -v 'internal/repository/postgres' | grep -v 'internal/repository/postgres/generated' || true)
+
+(CGO_ENABLED=1 go test -v -race -coverprofile=coverage.out $packages 2>&1) | tee "$temp_file" &
 test_pid=$!
 
 tests_completed_before=0

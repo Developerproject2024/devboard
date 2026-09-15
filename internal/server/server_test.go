@@ -65,6 +65,44 @@ func TestStartReturnsListenError(t *testing.T) {
 	}
 }
 
+func TestUseChainAppliesMiddlewares(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	server := New(":8080", WithLogger(logger))
+
+	server.RegisterRoutes("GET /health", http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusAccepted)
+	}))
+
+	server.UseChain(
+		func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				writer.Header().Set("X-First", "true")
+				next.ServeHTTP(writer, request)
+			})
+		},
+		func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				writer.Header().Set("X-Second", "true")
+				next.ServeHTTP(writer, request)
+			})
+		},
+	)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/health", nil)
+	server.httpServer.Handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("status code = %d, want %d", recorder.Code, http.StatusAccepted)
+	}
+	if recorder.Header().Get("X-First") != "true" {
+		t.Fatal("first middleware was not applied")
+	}
+	if recorder.Header().Get("X-Second") != "true" {
+		t.Fatal("second middleware was not applied")
+	}
+}
+
 func TestStartShutsDownOnSignal(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	server := New("127.0.0.1:0", WithLogger(logger))
